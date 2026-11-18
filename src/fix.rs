@@ -21,9 +21,10 @@ pub struct FixPlan {
 }
 
 fn link_of(config: &Config, mark: &Mark) -> Option<String> {
+    let org_id = config.org_id.as_deref()?;
     let project_id = mark.project_id.as_deref()?;
     let trace_id = mark.last_trace_id.as_deref()?;
-    Some(fill(&config.web_url_template, UrlParts { org_id: &config.org_id, project_id, thread_id: &mark.thread_id.0, trace_id }))
+    Some(fill(&config.web_url_template, UrlParts { org_id, project_id, thread_id: &mark.thread_id.0, trace_id }))
 }
 
 fn marked_thread(config: &Config, mark: &Mark) -> MarkedThread {
@@ -107,6 +108,24 @@ mod tests {
         let failing = plan(&config("false", dir.path()), "p", &[&mark("a", "")]).unwrap();
         assert!(launch(&ok).unwrap().success());
         assert!(!launch(&failing).unwrap().success());
+    }
+
+    #[test]
+    fn without_an_org_id_a_mark_has_no_link() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = Config { org_id: None, ..config("true", dir.path()) };
+        assert!(plan(&config, "p", &[&mark("a", "n")]).unwrap().prompt.contains("(no link)"));
+    }
+
+    #[test]
+    fn a_mark_with_an_org_id_has_a_link() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = Config {
+            org_id: Some("org-1".into()),
+            web_url_template: "https://x/{org_id}/{project_id}/{trace_id}".into(),
+            ..config("true", dir.path())
+        };
+        assert!(plan(&config, "p", &[&mark("a", "n")]).unwrap().prompt.contains("https://x/org-1/proj-1/trace-a"));
     }
 
     #[test]

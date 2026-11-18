@@ -55,10 +55,10 @@ An unknown key is an error, and so is an API key: put that in the environment.
 ```toml
 project      = "app-production"
 api_url      = "https://api.smith.langchain.com"
-repo_dir     = "/Users/cyrille/Documents/enroll/app"
+repo_dir     = "/path/to/your/repo"
 fix_command  = "claude"
 since        = "7d"
-org_id       = "398a5582-4144-4897-ba96-149d296b0ba7"
+org_id       = "<your LangSmith organization id>"
 web_url_template = "https://smith.langchain.com/o/{org_id}/projects/p/{project_id}/r/{trace_id}"
 theme        = "default"
 ```
@@ -67,10 +67,10 @@ theme        = "default"
 | --- | --- |
 | `project` | The LangSmith project, matched by exact name. |
 | `api_url` | The API base. It must be `https`, or `http` on `localhost` or `127.0.0.1`, so the key never travels in clear. |
-| `repo_dir` | Where the fix command runs. |
+| `repo_dir` | Where the fix command runs. It defaults to the folder you start `traces` in. |
 | `fix_command` | The command to run, split like a shell would. The prompt is added as its last argument, and no shell is involved. |
 | `since` | How far back to list thread activity: `5m`, `12h` or `7d`. `--since` overrides it. |
-| `org_id` | The LangSmith organization id used in links. |
+| `org_id` | The LangSmith organization id used in links. Without it, prompts say `(no link)` and `traces url` asks you to set it. |
 | `web_url_template` | The link to a trace. It can use `{org_id}`, `{project_id}`, `{thread_id}` and `{trace_id}`. |
 | `theme` | A [vtui](https://github.com/vmeyet/vtui) theme: `default`, `dracula`, `catppuccin`, `catppuccin-latte`, `rosepine`, `rosepine-dawn`, `nord`, `tokyonight` or `monokai`. |
 | `prompt_template` | Replaces the fix prompt. It can use `{count}`, `{project}` and `{threads}`. |

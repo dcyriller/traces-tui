@@ -80,7 +80,7 @@ pub(crate) mod tests {
             fix_program: "claude".into(),
             repo_dir: "/repo".into(),
             url_template: "https://smith.example/{trace_id}".into(),
-            org_id: "org".into(),
+            org_id: Some("org".into()),
             has_key,
         }
     }

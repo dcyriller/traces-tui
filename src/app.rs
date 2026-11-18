@@ -276,7 +276,7 @@ pub struct Settings {
     /// The link template.
     pub url_template: String,
     /// The organization id for links.
-    pub org_id: String,
+    pub org_id: Option<String>,
     /// Whether `LANGSMITH_API_KEY` is set.
     pub has_key: bool,
 }
@@ -403,8 +403,9 @@ impl App {
     /// The link of a thread's latest turn.
     pub fn url_of(&self, thread: &Thread) -> Option<String> {
         let project_id = self.project_id.as_ref()?;
+        let org_id = self.settings.org_id.as_deref()?;
         let trace_id = thread.last_trace_id.as_deref()?;
-        let parts = UrlParts { org_id: &self.settings.org_id, project_id: &project_id.0, thread_id: &thread.id.0, trace_id };
+        let parts = UrlParts { org_id, project_id: &project_id.0, thread_id: &thread.id.0, trace_id };
         Some(fill(&self.settings.url_template, parts))
     }
 
@@ -840,7 +841,7 @@ mod tests {
             fix_program: "claude".into(),
             repo_dir: "/repo".into(),
             url_template: "https://smith.example/{project_id}/{trace_id}".into(),
-            org_id: "org".into(),
+            org_id: Some("org".into()),
             has_key,
         }
     }
@@ -1093,6 +1094,14 @@ mod tests {
         app.settings.url_template = "http://smith.example/{trace_id}".into();
         let (app, effects) = press(app, Action::OpenUrl);
         assert_eq!((effects, &app.status), (Vec::new(), &Status::Error("only https links open".into())));
+    }
+
+    #[test]
+    fn open_url_without_an_org_id_says_no_link() {
+        let mut app = loaded(vec![thread("a", "x", 1)], None);
+        app.settings.org_id = None;
+        let (app, effects) = press(app, Action::OpenUrl);
+        assert_eq!((effects, &app.status), (Vec::new(), &Status::Error("no link for this thread yet".into())));
     }
 
     #[test]

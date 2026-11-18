@@ -82,6 +82,9 @@ pub fn fix(ctx: &Ctx, args: &FixArgs, input: &mut impl BufRead, out: &mut impl W
 
 /// Prints the link LangSmith gives for the latest turn of a thread.
 pub async fn url(ctx: &Ctx, thread_id: &str, out: &mut impl Write) -> Result<()> {
+    if ctx.config.org_id.is_none() {
+        bail!("set org_id in the config file to get links");
+    }
     let client = Client::new(&ctx.config.api_url, ctx.api_key()?)?;
     let project = client.resolve_project(&ctx.config.project).await?;
     let turns = client.list_turns(&project, &ThreadId(thread_id.to_owned())).await?;
@@ -118,6 +121,14 @@ mod tests {
         let printed: serde_json::Value = serde_json::from_slice(&out).unwrap();
         assert_eq!(printed[0]["thread_id"], "a");
         assert_eq!(printed[0]["note"], "wrong country");
+    }
+
+    #[tokio::test]
+    async fn url_asks_for_an_org_id_first() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = ctx_with_marks(dir.path(), &[]);
+        let err = url(&ctx, "t", &mut Vec::new()).await.unwrap_err();
+        assert!(err.to_string().contains("org_id"), "{err}");
     }
 
     #[test]

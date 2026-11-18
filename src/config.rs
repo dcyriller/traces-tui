@@ -4,7 +4,6 @@ use chrono::Duration;
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
-const DEFAULT_ORG_ID: &str = "398a5582-4144-4897-ba96-149d296b0ba7";
 const KEY_NAMES: [&str; 4] = ["api_key", "langsmith_api_key", "token", "secret"];
 
 /// The settings of `config.toml`; a missing file means these defaults.
@@ -21,8 +20,8 @@ pub struct Config {
     pub fix_command: String,
     /// How far back thread activity is listed.
     pub since: String,
-    /// The LangSmith organization id used in links.
-    pub org_id: String,
+    /// The LangSmith organization id used in links; without it no link is built.
+    pub org_id: Option<String>,
     /// The link to a trace, with `{org_id}`, `{project_id}`, `{thread_id}` and `{trace_id}`.
     pub web_url_template: String,
     /// The name of a vtui theme.
@@ -36,10 +35,10 @@ impl Default for Config {
         Self {
             project: "app-production".to_owned(),
             api_url: "https://api.smith.langchain.com".to_owned(),
-            repo_dir: PathBuf::from("/Users/cyrille/Documents/enroll/app"),
+            repo_dir: std::env::current_dir().unwrap_or_else(|_error| PathBuf::from(".")),
             fix_command: "claude".to_owned(),
             since: "7d".to_owned(),
-            org_id: DEFAULT_ORG_ID.to_owned(),
+            org_id: None,
             web_url_template: "https://smith.langchain.com/o/{org_id}/projects/p/{project_id}/r/{trace_id}".to_owned(),
             theme: "default".to_owned(),
             prompt_template: None,
@@ -95,6 +94,13 @@ mod tests {
     fn a_missing_file_gives_the_defaults() {
         let dir = tempfile::tempdir().unwrap();
         assert_eq!(Config::load(&dir.path().join("none.toml")).unwrap(), Config::default());
+    }
+
+    #[test]
+    fn the_defaults_name_no_organization_and_run_in_the_current_folder() {
+        let config = Config::default();
+        assert_eq!(config.org_id, None);
+        assert_eq!(config.repo_dir, std::env::current_dir().unwrap());
     }
 
     #[test]
