@@ -27,6 +27,8 @@ pub struct Mark {
     pub last_trace_id: Option<String>,
     /// The project it belongs to.
     pub project: String,
+    /// The project's uuid when marked, for the link.
+    pub project_id: Option<String>,
     /// What the user typed.
     pub note: String,
     /// When it was marked.
@@ -123,6 +125,7 @@ pub(crate) mod tests {
             thread_id: ThreadId(thread.to_owned()),
             last_trace_id: Some(format!("trace-{thread}")),
             project: "app-production".to_owned(),
+            project_id: Some("proj-1".to_owned()),
             note: note.to_owned(),
             marked_at: "2026-03-01T10:00:00Z".parse().unwrap(),
             status: MarkStatus::Todo,

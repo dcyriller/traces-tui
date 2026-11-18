@@ -1,4 +1,5 @@
 //! The LangSmith REST client: project lookup, thread list, thread turns and run links.
+pub mod url;
 pub(crate) mod wire;
 
 use crate::model::{ProjectId, Thread, ThreadId, Turn};

@@ -5,7 +5,7 @@ use traces_tui::cli::Cli;
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    match traces_tui::run(&Cli::parse()) {
+    match traces_tui::run(Cli::parse()).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
             eprintln!("traces: {err:#}");
