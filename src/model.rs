@@ -1,9 +1,11 @@
 //! What the screens show: threads and their turns.
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// A thread id: the Request id the agent sets on every turn.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct ThreadId(pub String);
 
 impl ThreadId {

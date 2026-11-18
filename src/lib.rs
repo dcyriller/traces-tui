@@ -3,6 +3,7 @@ pub mod cli;
 pub mod config;
 pub mod ctx;
 pub mod langsmith;
+pub mod marks;
 pub mod model;
 mod turn;
 
