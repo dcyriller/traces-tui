@@ -1,9 +1,9 @@
 //! The LangSmith REST client: project lookup, thread list, thread turns and run links.
+mod turn;
 pub mod url;
 pub(crate) mod wire;
 
 use crate::model::{ProjectId, Thread, ThreadId, Turn};
-use crate::turn::{to_thread, to_turn};
 use chrono::{DateTime, SecondsFormat, Utc};
 use reqwest::header::{ACCEPT, HeaderMap, HeaderValue};
 use reqwest::{Response, StatusCode, Url};
@@ -12,6 +12,7 @@ use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use std::fmt;
 use std::time::Duration;
+use turn::{to_thread, to_turn};
 use wire::{WireThread, WireTurn};
 
 const REQUEST_TIMEOUT_SECONDS: u64 = 20;

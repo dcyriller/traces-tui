@@ -667,7 +667,7 @@ impl App {
             thread_id: thread.id,
             last_trace_id: thread.last_trace_id,
             project: self.settings.project.clone(),
-            project_id: self.project_id.as_ref().map(|id| id.0.clone()),
+            project_id: self.project_id.clone(),
             note: self.field.take(),
             marked_at: self.now,
             status: MarkStatus::Todo,
@@ -964,7 +964,10 @@ mod tests {
         let (app, effects) = press(app, Action::Submit);
         assert_eq!((app.mode.clone(), effects), (Mode::List, vec![Effect::SaveMarks]));
         let mark = app.marks.get("app-production", &ThreadId("a".into())).unwrap();
-        assert_eq!((mark.note.as_str(), mark.status, mark.project_id.as_deref()), ("wrong country", MarkStatus::Todo, Some("p")));
+        assert_eq!(
+            (mark.note.as_str(), mark.status, mark.project_id.as_ref().map(|id| id.0.as_str())),
+            ("wrong country", MarkStatus::Todo, Some("p"))
+        );
         let (app, _) = press(app, Action::Mark);
         assert_eq!(app.field.text(), "wrong country");
     }

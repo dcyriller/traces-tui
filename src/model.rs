@@ -22,7 +22,8 @@ impl fmt::Display for ThreadId {
 }
 
 /// A LangSmith project's uuid.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct ProjectId(pub String);
 
 /// A feedback key on a thread, with how many points it holds and their mean.

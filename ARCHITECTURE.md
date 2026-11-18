@@ -15,9 +15,10 @@ When a boundary or a flow changes, change this page in the same MR.
 | `ctx.rs` | `Env` (the variables a run reads), `Ctx` (config, key, paths), `MissingApiKey` |
 | `langsmith/mod.rs` | `Client` and `ApiError`: resolve a project, list threads, list turns, read a run link |
 | `langsmith/wire.rs` | The fields read from LangSmith responses, and the time parser |
+| `langsmith/turn.rs` | Reads a run's loose JSON into a `Turn` and a thread row into a `Thread` |
 | `langsmith/url.rs` | Fills `web_url_template` |
 | `model.rs` | `ThreadId`, `ProjectId`, `Thread`, `Turn`, `TurnStatus`, `FeedbackKey` |
-| `turn.rs` | Reads a run's loose JSON into a `Turn` and a thread row into a `Thread` |
+
 | `marks.rs` | `Mark`, `Marks`: the JSON store of threads to fix, written atomically |
 | `prompt.rs` | Fills the fix prompt template |
 | `fix.rs` | `FixPlan`: the command line to run and where; `launch` runs it |
@@ -55,7 +56,7 @@ Each fetch carries a generation number, and `update` drops an answer whose numbe
 - Disk: `marks.rs` (the marks file), `config.rs` (read), `log.rs` (the log file).
 - Processes: `fix.rs` (the fix command) and `event_loop.rs` (the browser opener).
 - The terminal: `event_loop.rs`, through `vtui::screen::Screen`.
-- `app.rs`, `keys.rs`, `view/`, `prompt.rs` and `turn.rs` do no I/O.
+- `app.rs`, `keys.rs`, `view/`, `prompt.rs` and `langsmith/turn.rs` do no I/O.
 
 ## Fix flow
 

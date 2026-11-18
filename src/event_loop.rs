@@ -8,7 +8,7 @@ use crate::langsmith::{ApiError, Client};
 use crate::marks::Marks;
 use crate::model::ThreadId;
 use crate::view;
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use chrono::{Duration, Utc};
 use crossterm::event::{Event, EventStream, KeyEventKind};
 use futures_util::StreamExt;
@@ -109,8 +109,7 @@ fn run_fix(ctx: &Ctx, marks: &Marks, threads: &[ThreadId]) -> FixDone {
         for placeholder in &plan.unknown_placeholders {
             tracing::warn!(placeholder, "unknown placeholder in the prompt template");
         }
-        let status = fix::launch(&plan)?;
-        if status.success() { Ok(()) } else { bail!("{} exited with {status}", plan.argv[0]) }
+        fix::run(&plan)
     });
     FixDone { threads: threads.to_vec(), outcome: outcome.map_err(|error| format!("{error:#}")), finished_at: Utc::now() }
 }

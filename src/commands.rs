@@ -1,29 +1,23 @@
 //! The subcommands that skip the TUI.
 use crate::cli::{FixArgs, MarksArgs};
 use crate::ctx::Ctx;
-use crate::fix::{launch, plan};
+use crate::fix::{plan, run};
 use crate::langsmith::Client;
-use crate::marks::{Mark, MarkStatus, Marks};
+use crate::marks::{MarkStatus, Marks};
 use crate::model::ThreadId;
 use anyhow::{Context, Result, bail};
 use chrono::Utc;
+use clap::ValueEnum;
 use std::io::{BufRead, Write};
 
-fn status_name(status: MarkStatus) -> &'static str {
-    match status {
-        MarkStatus::Todo => "todo",
-        MarkStatus::Sent => "sent",
-    }
-}
-
-fn selected<'a>(marks: &'a Marks, project: &str, status: Option<&str>) -> Vec<&'a Mark> {
-    marks.all().iter().filter(|mark| mark.project == project && status.is_none_or(|wanted| status_name(mark.status) == wanted)).collect()
+fn status_name(status: MarkStatus) -> String {
+    status.to_possible_value().map(|value| value.get_name().to_owned()).unwrap_or_default()
 }
 
 /// Prints the marks of the project, as a table or as JSON.
 pub fn marks(ctx: &Ctx, args: &MarksArgs, out: &mut impl Write) -> Result<()> {
     let store = Marks::load(&ctx.marks_path)?;
-    let chosen = selected(&store, &ctx.config.project, args.status.as_deref());
+    let chosen = store.in_project(&ctx.config.project, args.status);
     if args.json {
         writeln!(out, "{}", serde_json::to_string_pretty(&chosen)?)?;
         return Ok(());
@@ -54,7 +48,7 @@ fn confirmed(question: &str, input: &mut impl BufRead, out: &mut impl Write) -> 
 pub fn fix(ctx: &Ctx, args: &FixArgs, input: &mut impl BufRead, out: &mut impl Write) -> Result<()> {
     let mut store = Marks::load(&ctx.marks_path)?;
     let project = ctx.config.project.as_str();
-    let chosen = if args.all { selected(&store, project, None) } else { store.todo(project) };
+    let chosen = if args.all { store.in_project(project, None) } else { store.todo(project) };
     if chosen.is_empty() {
         bail!("no marked threads to fix in {project}");
     }
@@ -72,10 +66,7 @@ pub fn fix(ctx: &Ctx, args: &FixArgs, input: &mut impl BufRead, out: &mut impl W
         return Ok(());
     }
     let threads: Vec<ThreadId> = chosen.iter().map(|mark| mark.thread_id.clone()).collect();
-    let status = launch(&plan)?;
-    if !status.success() {
-        bail!("{} exited with {status}", plan.argv[0]);
-    }
+    run(&plan)?;
     store.mark_sent(project, &threads, Utc::now());
     store.save(&ctx.marks_path)
 }
@@ -136,7 +127,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ctx = ctx_with_marks(dir.path(), &[("a", "n")]);
         let mut out = Vec::new();
-        marks(&ctx, &MarksArgs { json: false, status: Some("sent".into()) }, &mut out).unwrap();
+        marks(&ctx, &MarksArgs { json: false, status: Some(MarkStatus::Sent) }, &mut out).unwrap();
         assert_eq!(out, b"");
     }
 

@@ -1,7 +1,8 @@
 //! The marks store: threads to fix, kept in one JSON file. It holds ids and the note you typed, never message text.
-use crate::model::ThreadId;
+use crate::model::{ProjectId, ThreadId};
 use anyhow::{Context, Result, bail};
 use chrono::{DateTime, Utc};
+use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::Path;
@@ -9,7 +10,7 @@ use std::path::Path;
 const VERSION: u32 = 1;
 
 /// Whether a mark went to the fix command yet.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum MarkStatus {
     /// Waiting for a fix session.
@@ -28,7 +29,7 @@ pub struct Mark {
     /// The project it belongs to.
     pub project: String,
     /// The project's uuid when marked, for the link.
-    pub project_id: Option<String>,
+    pub project_id: Option<ProjectId>,
     /// What the user typed.
     pub note: String,
     /// When it was marked.
@@ -37,6 +38,13 @@ pub struct Mark {
     pub status: MarkStatus,
     /// When it was sent.
     pub sent_at: Option<DateTime<Utc>>,
+}
+
+impl Mark {
+    /// Whether this is the mark of `thread` in `project`.
+    pub fn is_of(&self, project: &str, thread: &ThreadId) -> bool {
+        self.project == project && self.thread_id == *thread
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -84,17 +92,22 @@ impl Marks {
 
     /// The mark of a thread in a project.
     pub fn get(&self, project: &str, thread: &ThreadId) -> Option<&Mark> {
-        self.marks.iter().find(|mark| mark.project == project && mark.thread_id == *thread)
+        self.marks.iter().find(|mark| mark.is_of(project, thread))
+    }
+
+    /// The marks of `project`, only those in `status` when given.
+    pub fn in_project(&self, project: &str, status: Option<MarkStatus>) -> Vec<&Mark> {
+        self.marks.iter().filter(|mark| mark.project == project && status.is_none_or(|wanted| mark.status == wanted)).collect()
     }
 
     /// The marks of `project` still waiting for a fix session.
     pub fn todo(&self, project: &str) -> Vec<&Mark> {
-        self.marks.iter().filter(|mark| mark.project == project && mark.status == MarkStatus::Todo).collect()
+        self.in_project(project, Some(MarkStatus::Todo))
     }
 
     /// Adds `mark`, or replaces the one of the same project and thread.
     pub fn upsert(&mut self, mark: Mark) {
-        match self.marks.iter_mut().find(|held| held.project == mark.project && held.thread_id == mark.thread_id) {
+        match self.marks.iter_mut().find(|held| held.is_of(&mark.project, &mark.thread_id)) {
             Some(held) => *held = mark,
             None => self.marks.push(mark),
         }
@@ -103,7 +116,7 @@ impl Marks {
     /// Drops a mark; says whether there was one.
     pub fn remove(&mut self, project: &str, thread: &ThreadId) -> bool {
         let before = self.marks.len();
-        self.marks.retain(|mark| !(mark.project == project && mark.thread_id == *thread));
+        self.marks.retain(|mark| !mark.is_of(project, thread));
         self.marks.len() != before
     }
 
@@ -125,7 +138,7 @@ pub(crate) mod tests {
             thread_id: ThreadId(thread.to_owned()),
             last_trace_id: Some(format!("trace-{thread}")),
             project: "app-production".to_owned(),
-            project_id: Some("proj-1".to_owned()),
+            project_id: Some(ProjectId("proj-1".to_owned())),
             note: note.to_owned(),
             marked_at: "2026-03-01T10:00:00Z".parse().unwrap(),
             status: MarkStatus::Todo,
@@ -141,6 +154,26 @@ pub(crate) mod tests {
         marks.upsert(Mark { project: "staging".into(), ..mark("a", "other project") });
         assert_eq!(marks.all().len(), 2);
         assert_eq!(marks.get("app-production", &ThreadId("a".into())).unwrap().note, "second");
+    }
+
+    #[test]
+    fn in_project_filters_by_project_and_status() {
+        let mut marks = Marks::default();
+        marks.upsert(mark("a", ""));
+        marks.upsert(mark("b", ""));
+        marks.upsert(Mark { project: "staging".into(), ..mark("c", "") });
+        marks.mark_sent("app-production", &[ThreadId("b".into())], "2026-03-02T00:00:00Z".parse().unwrap());
+        assert_eq!(marks.in_project("app-production", None).len(), 2);
+        assert_eq!(marks.in_project("app-production", Some(MarkStatus::Sent))[0].thread_id.0, "b");
+        assert_eq!(marks.in_project("staging", Some(MarkStatus::Sent)).len(), 0);
+    }
+
+    #[test]
+    fn is_of_matches_the_project_and_the_thread() {
+        let held = mark("a", "");
+        assert!(held.is_of("app-production", &ThreadId("a".into())));
+        assert!(!held.is_of("staging", &ThreadId("a".into())));
+        assert!(!held.is_of("app-production", &ThreadId("b".into())));
     }
 
     #[test]

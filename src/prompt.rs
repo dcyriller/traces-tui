@@ -1,4 +1,5 @@
 //! The prompt handed to the fix command: a template filled with the marked threads, never with message text.
+use crate::model::ThreadId;
 use chrono::{DateTime, Utc};
 
 /// The prompt used when the config sets none.
@@ -18,7 +19,7 @@ pub struct MarkedThread {
     /// The LangSmith link, when one can be built.
     pub url: Option<String>,
     /// The thread id.
-    pub thread_id: String,
+    pub thread_id: ThreadId,
     /// When it was marked.
     pub marked_at: DateTime<Utc>,
     /// What the user typed.
@@ -84,7 +85,7 @@ mod tests {
     fn thread(id: &str, note: &str) -> MarkedThread {
         MarkedThread {
             url: Some(format!("https://smith.example/{id}")),
-            thread_id: id.to_owned(),
+            thread_id: ThreadId(id.to_owned()),
             marked_at: "2026-03-01T10:00:00Z".parse().unwrap(),
             note: note.to_owned(),
         }

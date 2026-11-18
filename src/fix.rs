@@ -22,13 +22,13 @@ pub struct FixPlan {
 
 fn link_of(config: &Config, mark: &Mark) -> Option<String> {
     let org_id = config.org_id.as_deref()?;
-    let project_id = mark.project_id.as_deref()?;
+    let project_id = mark.project_id.as_ref()?.0.as_str();
     let trace_id = mark.last_trace_id.as_deref()?;
     Some(fill(&config.web_url_template, UrlParts { org_id, project_id, thread_id: &mark.thread_id.0, trace_id }))
 }
 
 fn marked_thread(config: &Config, mark: &Mark) -> MarkedThread {
-    MarkedThread { url: link_of(config, mark), thread_id: mark.thread_id.0.clone(), marked_at: mark.marked_at, note: mark.note.clone() }
+    MarkedThread { url: link_of(config, mark), thread_id: mark.thread_id.clone(), marked_at: mark.marked_at, note: mark.note.clone() }
 }
 
 fn is_found(program: &str, path_var: Option<&std::ffi::OsStr>) -> bool {
@@ -53,6 +53,12 @@ pub fn plan(config: &Config, project: &str, marks: &[&Mark]) -> Result<FixPlan> 
     let rendered = render(template, project, &threads);
     argv.push(rendered.text.clone());
     Ok(FixPlan { argv, cwd: config.repo_dir.clone(), prompt: rendered.text, unknown_placeholders: rendered.unknown })
+}
+
+/// Launches the plan and fails when the command exits non-zero.
+pub fn run(plan: &FixPlan) -> Result<()> {
+    let status = launch(plan)?;
+    if status.success() { Ok(()) } else { bail!("{} exited with {status}", plan.argv[0]) }
 }
 
 /// Runs the command with the terminal; no shell is involved, so the prompt arrives as one argument.
@@ -99,6 +105,13 @@ mod tests {
         assert!(plan(&config("true", &dir.path().join("none")), "p", &[]).is_err());
         assert!(plan(&config("no-such-program-xyz", dir.path()), "p", &[]).is_err());
         assert!(plan(&config("", dir.path()), "p", &[]).is_err());
+    }
+
+    #[test]
+    fn run_fails_naming_the_command_on_a_non_zero_exit() {
+        let dir = tempfile::tempdir().unwrap();
+        let failing = plan(&config("false", dir.path()), "p", &[&mark("a", "")]).unwrap();
+        assert!(run(&failing).unwrap_err().to_string().starts_with("false exited with"));
     }
 
     #[test]

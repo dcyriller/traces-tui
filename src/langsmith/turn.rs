@@ -1,5 +1,5 @@
 //! Turns a LangSmith run into a `Turn`: the employee message, the reply and the route, read out of loose JSON.
-use crate::langsmith::wire::{WireThread, WireTurn, parse_time};
+use super::wire::{WireThread, WireTurn, parse_time};
 use crate::model::{FeedbackKey, Thread, ThreadId, Turn, TurnStatus};
 use serde_json::{Map, Value};
 

@@ -1,4 +1,5 @@
 //! The command line.
+use crate::marks::MarkStatus;
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -41,8 +42,8 @@ pub struct MarksArgs {
     #[arg(long)]
     pub json: bool,
     /// Only marks in this status.
-    #[arg(long, value_parser = ["todo", "sent"])]
-    pub status: Option<String>,
+    #[arg(long, value_enum)]
+    pub status: Option<MarkStatus>,
 }
 
 /// Flags of `traces fix`.

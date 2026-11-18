@@ -12,7 +12,6 @@ pub mod log;
 pub mod marks;
 pub mod model;
 pub mod prompt;
-mod turn;
 pub mod view;
 
 use anyhow::Result;
