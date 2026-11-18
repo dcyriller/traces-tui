@@ -1,11 +1,12 @@
 //! The pure state of the TUI: `update` takes a message and returns the next state and the effects to run.
+use crate::keys::sections;
 use crate::langsmith::url::{UrlParts, fill, is_openable};
 use crate::langsmith::{ThreadsPage, TurnsPage};
 use crate::marks::{Mark, MarkStatus, Marks};
 use crate::model::{ProjectId, Thread, ThreadId, Turn};
 use chrono::{DateTime, Utc};
 use vtui::field::Field;
-use vtui::help::Help;
+use vtui::help::{Help, last_row};
 
 const LOAD_MORE_WITHIN_ROWS: usize = 5;
 
@@ -450,7 +451,7 @@ impl App {
         match action {
             Action::Back => self.help = None,
             Action::Help => help.every_key = !help.every_key,
-            Action::MoveDown => help.scroll += 1,
+            Action::MoveDown => help.scroll = (help.scroll + 1).min(last_row(&sections(&self.mode, help.every_key))),
             Action::MoveUp => help.scroll = help.scroll.saturating_sub(1),
             Action::Quit => return self.quit(),
             _ => {}

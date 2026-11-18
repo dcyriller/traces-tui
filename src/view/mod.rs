@@ -1,7 +1,10 @@
 //! Drawing: each screen reads the state and paints it, and none of them does I/O.
+mod detail;
 mod list;
+mod note;
 
-use crate::app::{App, Fit, Status};
+use crate::app::{App, Fit, Mode, Status};
+use crate::keys::sections;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::Style;
@@ -10,13 +13,26 @@ use ratatui::widgets::Paragraph;
 use vtui::theme::Theme;
 
 const SPINNER: [&str; 4] = ["|", "/", "-", "\\"];
-const HINTS: &str = "? keys  enter open  m mark  F fix  / search  q quit";
 
-fn status_line<'a>(app: &App, theme: &Theme) -> Line<'a> {
+fn hints(mode: &Mode) -> &'static str {
+    match mode {
+        Mode::List | Mode::Search => "? keys  enter open  m mark  F fix  / search  q quit",
+        Mode::Detail => "? keys  j k scroll  n p turn  m mark  o open  esc back",
+        Mode::Note => "enter save  esc cancel",
+        Mode::Confirm(_) => "y yes  n no",
+    }
+}
+
+fn status_line(app: &App, theme: &Theme) -> Line<'static> {
+    if app.mode == Mode::Search {
+        let mut spans = vec![Span::styled("/", Style::default().fg(theme.accent))];
+        spans.extend(note::field_line(&app.field).spans);
+        return Line::from(spans);
+    }
     match &app.status {
         Status::Error(message) => Line::from(Span::styled(format!("! {message}"), Style::default().fg(theme.danger))),
         Status::Info(message) => Line::from(Span::styled(message.clone(), Style::default().fg(theme.muted))),
-        Status::Idle => Line::from(Span::styled(HINTS, Style::default().fg(theme.faded))),
+        Status::Idle => Line::from(Span::styled(hints(&app.mode), Style::default().fg(theme.faded))),
     }
 }
 
@@ -25,9 +41,18 @@ pub fn draw(frame: &mut Frame<'_>, app: &App, theme: &Theme) -> Fit {
     let [header, body, footer] = Layout::vertical([Constraint::Length(1), Constraint::Min(1), Constraint::Length(1)]).areas(frame.area());
     let spinner = if app.is_busy() { SPINNER[app.spinner % SPINNER.len()] } else { " " };
     frame.render_widget(Paragraph::new(list::header(app, theme, spinner)), header);
-    list::draw(frame, body, app, theme);
+    let fit = if app.detail.is_some() {
+        detail::draw(frame, body, app, theme)
+    } else {
+        list::draw(frame, body, app, theme);
+        Fit::default()
+    };
     frame.render_widget(Paragraph::new(status_line(app, theme)), footer);
-    Fit::default()
+    note::draw(frame, app, theme);
+    if let Some(help) = app.help {
+        vtui::help::draw(frame, theme, frame.area(), help, &sections(&app.mode, help.every_key));
+    }
+    fit
 }
 
 #[cfg(test)]
@@ -91,5 +116,13 @@ pub(crate) mod tests {
             .map(|row| row.iter().map(Cell::symbol).collect::<String>())
             .collect::<Vec<_>>()
             .join("\n")
+    }
+
+    #[test]
+    fn the_help_overlay_lists_the_keys_of_the_screen() {
+        let app = app_with(vec![thread("a", "q", 0, false)]);
+        let (app, _) = crate::app::update(app, crate::app::Msg::Action(crate::app::Action::Help));
+        let screen = render(&app, 80, 30);
+        assert!(screen.contains("open the thread") && screen.contains("launch the fix command"), "{screen}");
     }
 }
