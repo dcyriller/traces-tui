@@ -45,12 +45,16 @@ impl Runner {
                 tracing::warn!(%error, "langsmith call failed");
                 error.to_string()
             });
-            drop(sender.send(wrap(result)));
+            if sender.send(wrap(result)).is_err() {
+                tracing::warn!("the loop is gone, dropping a LangSmith answer");
+            }
         });
     }
 
     fn fail(&self, message: String) {
-        drop(self.sender.send(Msg::Failure(message)));
+        if self.sender.send(Msg::Failure(message)).is_err() {
+            tracing::warn!("the loop is gone, dropping a failure message");
+        }
     }
 
     fn run(&self, effect: Effect, marks: &Marks) {
@@ -87,7 +91,11 @@ impl Runner {
         match tokio::process::Command::new(opener).arg(url).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).spawn()
         {
             Ok(mut child) => {
-                tokio::spawn(async move { drop(child.wait().await) });
+                tokio::spawn(async move {
+                    if let Err(error) = child.wait().await {
+                        tracing::warn!(%error, "waiting for the browser opener failed");
+                    }
+                });
             }
             Err(error) => self.fail(format!("{opener}: {error}")),
         }
@@ -104,7 +112,7 @@ fn run_fix(ctx: &Ctx, marks: &Marks, threads: &[ThreadId]) -> FixDone {
         let status = fix::launch(&plan)?;
         if status.success() { Ok(()) } else { bail!("{} exited with {status}", plan.argv[0]) }
     });
-    FixDone { threads: threads.to_vec(), outcome: outcome.map_err(|error| format!("{error:#}")) }
+    FixDone { threads: threads.to_vec(), outcome: outcome.map_err(|error| format!("{error:#}")), finished_at: Utc::now() }
 }
 
 fn messages_of(app: &App, event: Event) -> Vec<Msg> {

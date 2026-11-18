@@ -93,6 +93,8 @@ pub struct FixDone {
     pub threads: Vec<ThreadId>,
     /// `Err` holds what to show.
     pub outcome: Result<(), String>,
+    /// When the command ended.
+    pub finished_at: DateTime<Utc>,
 }
 
 /// Everything the update function reacts to.
@@ -538,7 +540,7 @@ impl App {
                 self.status = Status::Info(format!("launching {}", self.settings.fix_program));
                 vec![Effect::Fix(self.todo_threads())]
             }
-            (Action::Yes, Confirm::QuitUnsaved) => self.quit(),
+            (Action::Yes, Confirm::QuitUnsaved) | (Action::Quit, _) => self.quit(),
             (Action::No, Confirm::QuitUnsaved) => {
                 self.mode = Mode::Note;
                 Vec::new()
@@ -768,7 +770,10 @@ impl App {
         if generation != self.list_generation {
             return Vec::new();
         }
-        let Ok(page) = result else { return self.fail_list(result.err().unwrap_or_default()) };
+        let page = match result {
+            Ok(page) => page,
+            Err(message) => return self.fail_list(message),
+        };
         let appending = self.loading == Loading::More;
         self.loading = Loading::Idle;
         self.status = Status::Idle;
@@ -800,7 +805,7 @@ impl App {
     fn on_fix(&mut self, done: FixDone) -> Vec<Effect> {
         match done.outcome {
             Ok(()) => {
-                self.marks.mark_sent(&self.settings.project, &done.threads, self.now);
+                self.marks.mark_sent(&self.settings.project, &done.threads, done.finished_at);
                 self.status = Status::Info(format!("{} threads sent", done.threads.len()));
                 vec![Effect::SaveMarks]
             }
@@ -1044,10 +1049,25 @@ mod tests {
         assert_eq!(app.mode, Mode::Confirm(Confirm::Fix));
         let (app, effects) = press(app, Action::Yes);
         assert_eq!(effects, vec![Effect::Fix(vec![ThreadId("a".into())])]);
-        let done = FixDone { threads: vec![ThreadId("a".into())], outcome: Ok(()) };
+        let finished_at = "2026-03-02T01:30:00Z".parse().unwrap();
+        let done = FixDone { threads: vec![ThreadId("a".into())], outcome: Ok(()), finished_at };
         let (app, effects) = update(app, Msg::Fix(done));
         assert_eq!(effects, vec![Effect::SaveMarks]);
+        assert_eq!(app.marks.get("app-production", &ThreadId("a".into())).unwrap().sent_at, Some(finished_at));
         assert_eq!(app.marks.todo("app-production").len(), 0);
+    }
+
+    #[test]
+    fn ctrl_c_quits_from_every_question() {
+        for question in [Action::Fix, Action::Unmark] {
+            let app = loaded(vec![thread("a", "x", 1)], None);
+            let (app, _) = press(app, Action::Mark);
+            let (app, _) = press(app, Action::Submit);
+            let (app, _) = press(app, question);
+            assert!(matches!(app.mode, Mode::Confirm(_)));
+            let (app, effects) = press(app, Action::Quit);
+            assert_eq!((app.should_quit(), effects), (true, vec![Effect::Quit]));
+        }
     }
 
     #[test]
@@ -1055,7 +1075,11 @@ mod tests {
         let app = loaded(vec![thread("a", "x", 1)], None);
         let (app, _) = press(app, Action::Mark);
         let (app, _) = press(app, Action::Submit);
-        let done = FixDone { threads: vec![ThreadId("a".into())], outcome: Err("claude exited with exit status: 1".into()) };
+        let done = FixDone {
+            threads: vec![ThreadId("a".into())],
+            outcome: Err("claude exited with exit status: 1".into()),
+            finished_at: Utc::now(),
+        };
         let (app, _) = update(app, Msg::Fix(done));
         assert_eq!(app.marks.todo("app-production").len(), 1);
         assert!(matches!(app.status, Status::Error(_)));

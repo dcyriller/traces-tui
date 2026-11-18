@@ -54,7 +54,11 @@ pub fn render(template: &str, project: &str, threads: &[MarkedThread]) -> Render
     while let Some(open) = rest.find('{') {
         text.push_str(&rest[..open]);
         let after = &rest[open..];
-        let Some(close) = after.find('}') else { break };
+        let Some(close) = after.find('}') else {
+            text.push_str(after);
+            rest = "";
+            break;
+        };
         let name = &after[1..close];
         match name {
             "count" => text.push_str(&threads.len().to_string()),
@@ -123,5 +127,11 @@ mod tests {
     fn a_thread_without_a_link_says_so() {
         let bare = MarkedThread { url: None, ..thread("a", "n") };
         assert!(render("{threads}", "p", &[bare]).text.starts_with("- (no link) (thread a"));
+    }
+
+    #[test]
+    fn an_unclosed_brace_is_kept_once() {
+        assert_eq!(render("abc {x", "p", &[]).text, "abc {x");
+        assert_eq!(render("{count} see {notes", "p", &[]).text, "0 see {notes");
     }
 }
