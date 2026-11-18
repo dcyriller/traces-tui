@@ -1,9 +1,11 @@
 //! Triage LangSmith agent traces from the terminal and hand the threads to fix to Claude Code.
+pub mod app;
 pub mod cli;
 pub mod commands;
 pub mod config;
 pub mod ctx;
 pub mod fix;
+pub mod keys;
 pub mod langsmith;
 pub mod marks;
 pub mod model;
