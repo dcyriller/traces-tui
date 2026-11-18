@@ -905,9 +905,9 @@ mod tests {
     fn an_error_keeps_the_loaded_rows() {
         let app = loaded(vec![thread("a", "hi", 1)], Some("c"));
         let (app, _) = press(app, Action::Reload);
-        let (app, _) = update(app, Msg::Threads { generation: 2, result: Err("network error, press r".into()) });
+        let (app, _) = update(app, Msg::Threads { generation: 2, result: Err("network error".into()) });
         assert_eq!(app.threads.len(), 1);
-        assert_eq!(app.status, Status::Error("network error, press r".into()));
+        assert_eq!(app.status, Status::Error("network error".into()));
         assert_eq!(app.loading, Loading::Idle);
     }
 

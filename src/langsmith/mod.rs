@@ -47,7 +47,7 @@ impl fmt::Display for ApiError {
         match self {
             Self::KeyRejected => f.write_str("key rejected by LangSmith"),
             Self::ProjectNotFound(name) => write!(f, "project {name} not found"),
-            Self::Network => f.write_str("network error, press r"),
+            Self::Network => f.write_str("network error"),
             Self::RateLimited => f.write_str("LangSmith is rate limiting requests (429)"),
             Self::Unavailable(code) => write!(f, "threads API unavailable ({code})"),
             Self::Status(code) => write!(f, "LangSmith answered {code}"),
@@ -143,6 +143,7 @@ impl Client {
         headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
         let http = reqwest::Client::builder()
             .default_headers(headers)
+            .redirect(reqwest::redirect::Policy::none())
             .timeout(Duration::from_secs(REQUEST_TIMEOUT_SECONDS))
             .build()
             .map_err(|_error| ApiError::Network)?;
@@ -358,6 +359,23 @@ mod tests {
         }
         assert!(Client::new("https://api.smith.langchain.com", "k").is_ok());
         assert!(Client::new("http://127.0.0.1:8080", "k").is_ok());
+    }
+
+    #[tokio::test]
+    async fn a_redirect_is_not_followed_so_the_key_never_reaches_another_host() {
+        let elsewhere = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"items": []})))
+            .expect(0)
+            .mount(&elsewhere)
+            .await;
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(307).insert_header("location", format!("{}/steal", elsewhere.uri())))
+            .mount(&server)
+            .await;
+        let err = client(&server).list_threads(&project(), since(), None).await.unwrap_err();
+        assert_eq!(err, ApiError::Status(307));
     }
 
     #[test]

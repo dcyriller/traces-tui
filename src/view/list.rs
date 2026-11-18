@@ -155,8 +155,8 @@ mod tests {
     #[test]
     fn an_error_after_rows_loaded_goes_to_the_status_line_and_keeps_the_rows() {
         let app = app_with(vec![thread("a", "Still here", 0, false)]);
-        let (app, _) = update(app, Msg::Failure("network error, press r".into()));
-        assert_eq!(app.status, Status::Error("network error, press r".into()));
+        let (app, _) = update(app, Msg::Failure("network error".into()));
+        assert_eq!(app.status, Status::Error("network error".into()));
         let screen = render(&app, 80, 6);
         assert!(screen.contains("Still here") && screen.contains("network error, press r"), "{screen}");
     }

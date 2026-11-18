@@ -129,8 +129,8 @@ mod tests {
     fn it_says_loading_and_shows_a_failed_load() {
         let (app, _) = update(app_with(vec![thread("a", "q", 0, false)]), Msg::Action(Action::Open));
         assert!(render(&app, 60, 6).contains("loading..."));
-        let (app, _) = update(app, Msg::Turns { generation: 1, result: Err("network error, press r".into()) });
-        assert!(render(&app, 60, 6).contains("network error, press r"));
+        let (app, _) = update(app, Msg::Turns { generation: 1, result: Err("network error".into()) });
+        assert!(render(&app, 60, 6).contains("network error"));
     }
 
     #[test]

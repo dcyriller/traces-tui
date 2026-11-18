@@ -23,6 +23,10 @@ fn hints(mode: &Mode) -> &'static str {
     }
 }
 
+fn retry_hint(message: &str) -> &'static str {
+    if message == "network error" { ", press r" } else { "" }
+}
+
 fn status_line(app: &App, theme: &Theme) -> Line<'static> {
     if app.mode == Mode::Search {
         let mut spans = vec![Span::styled("/", Style::default().fg(theme.accent))];
@@ -30,7 +34,9 @@ fn status_line(app: &App, theme: &Theme) -> Line<'static> {
         return Line::from(spans);
     }
     match &app.status {
-        Status::Error(message) => Line::from(Span::styled(format!("! {message}"), Style::default().fg(theme.danger))),
+        Status::Error(message) => {
+            Line::from(Span::styled(format!("! {message}{}", retry_hint(message)), Style::default().fg(theme.danger)))
+        }
         Status::Info(message) => Line::from(Span::styled(message.clone(), Style::default().fg(theme.muted))),
         Status::Idle => Line::from(Span::styled(hints(&app.mode), Style::default().fg(theme.faded))),
     }
