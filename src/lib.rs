@@ -2,6 +2,11 @@
 pub mod cli;
 pub mod config;
 pub mod ctx;
+#[cfg_attr(not(test), expect(dead_code, reason = "the client reads them in the next step"))]
+pub mod langsmith;
+pub mod model;
+#[cfg_attr(not(test), expect(dead_code, reason = "the client reads them in the next step"))]
+mod turn;
 
 use anyhow::Result;
 use cli::Cli;
