@@ -98,6 +98,9 @@ fn run_fix(ctx: &Ctx, marks: &Marks, threads: &[ThreadId]) -> FixDone {
     let project = ctx.config.project.as_str();
     let chosen: Vec<_> = threads.iter().filter_map(|thread| marks.get(project, thread)).collect();
     let outcome = fix::plan(&ctx.config, project, &chosen).and_then(|plan| {
+        for placeholder in &plan.unknown_placeholders {
+            tracing::warn!(placeholder, "unknown placeholder in the prompt template");
+        }
         let status = fix::launch(&plan)?;
         if status.success() { Ok(()) } else { bail!("{} exited with {status}", plan.argv[0]) }
     });
@@ -187,4 +190,45 @@ async fn event_loop(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Config;
+    use crate::marks::tests::mark;
+
+    fn ctx_running(command: &str, dir: &std::path::Path) -> Ctx {
+        let cli = <crate::cli::Cli as clap::Parser>::parse_from(["traces", "--config", dir.join("none.toml").to_str().unwrap()]);
+        let mut ctx = Ctx::build(&cli, crate::ctx::Env { home: dir.to_path_buf(), ..Default::default() }).unwrap();
+        ctx.config = Config { fix_command: command.into(), repo_dir: dir.to_path_buf(), ..Config::default() };
+        ctx
+    }
+
+    fn marks_of(thread: &str) -> Marks {
+        let mut marks = Marks::default();
+        marks.upsert(mark(thread, "n"));
+        marks
+    }
+
+    #[test]
+    fn a_command_that_exits_zero_is_a_success_carrying_the_threads() {
+        let dir = tempfile::tempdir().unwrap();
+        let done = run_fix(&ctx_running("true", dir.path()), &marks_of("a"), &[ThreadId("a".into())]);
+        assert_eq!((done.outcome, done.threads), (Ok(()), vec![ThreadId("a".into())]));
+    }
+
+    #[test]
+    fn a_command_that_exits_non_zero_is_an_error_naming_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let done = run_fix(&ctx_running("false", dir.path()), &marks_of("a"), &[ThreadId("a".into())]);
+        assert!(done.outcome.unwrap_err().starts_with("false exited with"));
+    }
+
+    #[test]
+    fn a_missing_program_is_an_error_not_a_panic() {
+        let dir = tempfile::tempdir().unwrap();
+        let done = run_fix(&ctx_running("no-such-program-xyz", dir.path()), &marks_of("a"), &[ThreadId("a".into())]);
+        assert!(done.outcome.unwrap_err().contains("not found on PATH"));
+    }
 }
