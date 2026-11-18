@@ -4,15 +4,18 @@ pub mod cli;
 pub mod commands;
 pub mod config;
 pub mod ctx;
+pub mod event_loop;
 pub mod fix;
 pub mod keys;
 pub mod langsmith;
+pub mod log;
 pub mod marks;
 pub mod model;
 pub mod prompt;
 mod turn;
+pub mod view;
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use cli::{Cli, Command};
 use ctx::{Ctx, Env};
 use std::io::{stdin, stdout};
@@ -24,6 +27,9 @@ pub async fn run(cli: Cli) -> Result<()> {
         Some(Command::Marks(args)) => commands::marks(&ctx, args, &mut stdout()),
         Some(Command::Fix(args)) => commands::fix(&ctx, args, &mut stdin().lock(), &mut stdout()),
         Some(Command::Url { thread_id }) => commands::url(&ctx, thread_id, &mut stdout()).await,
-        None => bail!("the TUI is not built yet"),
+        None => {
+            log::start(&ctx.log_path);
+            event_loop::run(ctx).await
+        }
     }
 }

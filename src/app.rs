@@ -128,6 +128,8 @@ pub enum Msg {
     },
     /// The fix command ended.
     Fix(FixDone),
+    /// Something outside the state failed, with what to show.
+    Failure(String),
 }
 
 /// What the event loop does for the state.
@@ -424,6 +426,10 @@ impl App {
             Msg::Threads { generation, result } => self.on_threads(generation, result),
             Msg::Turns { generation, result } => self.on_turns(generation, result),
             Msg::Fix(done) => self.on_fix(done),
+            Msg::Failure(message) => {
+                self.status = Status::Error(message);
+                Vec::new()
+            }
         }
     }
 
