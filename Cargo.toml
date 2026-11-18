@@ -1,0 +1,91 @@
+[package]
+name = "traces-tui"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+description = "Triage LangSmith agent traces from the terminal and hand the threads to fix to Claude Code."
+license = "MIT"
+readme = "README.md"
+
+[[bin]]
+name = "traces"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+clap = { version = "4.5", features = ["derive"] }
+crossterm = { version = "0.29", features = ["event-stream"] }
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+ratatui = "0.30"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+shell-words = "1.1"
+tempfile = "3.20"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "process"] }
+toml = "1.1"
+tracing = { version = "0.1", default-features = false, features = ["std"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "std"] }
+vtui = { git = "https://github.com/vmeyet/vtui", tag = "v0.9.0" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
+wiremock = "0.6"
+
+[profile.release]
+lto = "fat"
+strip = true
+panic = "abort"
+codegen-units = 1
+
+[lints.rust]
+elided_lifetimes_in_paths = "warn"
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+non_ascii_idents = "warn"
+redundant_lifetimes = "warn"
+single_use_lifetimes = "warn"
+trivial_numeric_casts = "warn"
+unit_bindings = "warn"
+unreachable_pub = "warn"
+unsafe_code = "forbid"
+unused_import_braces = "warn"
+unused_lifetimes = "warn"
+unused_macro_rules = "warn"
+unused_qualifications = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+# Restriction lints that hold a house rule from AGENTS.md or a real hazard here.
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+clone_on_ref_ptr = "warn"
+dbg_macro = "warn"
+filetype_is_file = "warn"
+map_err_ignore = "warn"
+let_underscore_must_use = "warn"
+needless_pass_by_ref_mut = "warn"
+panic_in_result_fn = "warn"
+redundant_clone = "warn"
+self_named_module_files = "warn"
+significant_drop_tightening = "warn"
+tests_outside_test_module = "warn"
+todo = "warn"
+undocumented_unsafe_blocks = "warn"
+unimplemented = "warn"
+unused_result_ok = "warn"
+# Pedantic lints this code opts out of.
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_sign_loss = "allow"
+doc_markdown = "allow"
+format_collect = "allow"
+match_same_arms = "allow"
+missing_errors_doc = "allow"
+must_use_candidate = "allow"
+similar_names = "allow"
+unreadable_literal = "allow"
+
