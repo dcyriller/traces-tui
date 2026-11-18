@@ -1,5 +1,7 @@
 //! Triage LangSmith agent traces from the terminal and hand the threads to fix to Claude Code.
 pub mod cli;
+pub mod config;
+pub mod ctx;
 
 use anyhow::Result;
 use cli::Cli;
