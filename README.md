@@ -19,7 +19,11 @@ Triage your agent's LangSmith traces from the terminal, mark the conversations t
 
 ## Install
 
-Rust 1.92 or newer:
+```sh
+brew install dcyriller/tap/traces-tui
+```
+
+Or with Rust 1.92 or newer:
 
 ```sh
 cargo install --git https://github.com/dcyriller/traces-tui
